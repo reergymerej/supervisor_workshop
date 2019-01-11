@@ -23,6 +23,21 @@ defmodule StackSupervisor do
     end
   end
 
+  def stack_count(supervisor_pid) do
+    send(supervisor_pid, {:stack_count, self()})
+
+    count =
+      receive do
+        {:stack_count, c} -> c
+      end
+
+    if count do
+      {:ok, count}
+    else
+      :error
+    end
+  end
+
   # Server
   def init do
     Process.flag(:trap_exit, true)
@@ -41,6 +56,11 @@ defmodule StackSupervisor do
           IO.inspect("find_stack: #{stack_name}")
           send(sender, {:found, children[stack_name]})
           children
+
+        {:stack_count, sender} ->
+          send(sender, {:stack_count, Enum.count(children)})
+          children
+
 
         {:EXIT, dead_pid, _} ->
           stack_name = children |> Enum.find(fn {key, val} -> val == dead_pid end) |> elem(0)
